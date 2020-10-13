@@ -66,38 +66,40 @@ kinetic_ps(α, a, i, β, b, _, _) = g(α, a, β, b) * α * β^2 * π^1.5 / (α +
 kinetic_pp(α, a, i, β, b, j, _) = g(α, a, β, b) * α * β * π^1.5 / (α + β)^3.5 * ((2.5 - α * β / (α + β) * norm(a - b)^2) * (i == j) + α * β / (α + β) * (2α * β / (α + β) * norm(a - b)^2 - 7) * (a[i] - b[i]) * (a[j] - b[j]))
 kinetic_energy_matrix(orbitals, indices, mol) = one_electron_matrix(orbitals, indices, mol, (kinetic_ss, kinetic_ps, kinetic_pp))
 
-function nuclear_ss(α, a, _, β, b, _, mol)
-    η = α + β
+function nuclear_loop(mol, func)
     res = 0.
     for curr_atom in mol.atoms
-        r = (α * a + β * b) / η - curr_atom.pos
-        t = sqrt(η) * norm(r)
-        res -= curr_atom.charge * g(α, a, β, b) * π^1.5 / η * s1(t)
+        res -= curr_atom.charge * func(curr_atom.pos)
     end
     res
 end
 
+function nuclear_ss(α, a, _, β, b, _, mol)
+    η = α + β
+    return nuclear_loop(mol, c -> begin
+        r = (α * a + β * b) / η - c
+        t = sqrt(η) * norm(r)
+        -g(α, a, β, b) * π^1.5 / η * s1(t)
+    end)
+end
+
 function nuclear_ps(α, a, i, β, b, _, mol)
     η = α + β
-    res = 0.
-    for curr_atom in mol.atoms
-        r = (α * a + β * b) / η - curr_atom.pos
+    return nuclear_loop(mol, c -> begin
+        r = (α * a + β * b) / η - c
         t = sqrt(η) * norm(r)
-        res -= curr_atom.charge * g(α, a, β, b) * π^1.5 / 2η * (r[i] * s2(t) - 2β * (a[i] - b[i]) / η * s1(t))
-    end
-    res
+        -g(α, a, β, b) * π^1.5 / 2η * (r[i] * s2(t) - 2β * (a[i] - b[i]) / η * s1(t))
+    end)
 end
 
 function nuclear_pp(α, a, i, β, b, j, mol)
     η = α + β
     δᵢⱼ = i == j
-    res = 0.
-    for curr_atom in mol.atoms
-        r = (α * a + β * b) / η - curr_atom.pos
+    return nuclear_loop(mol, c -> begin
+        r = (α * a + β * b) / η - c
         t = sqrt(η) * norm(r)
-        res -= curr_atom.charge * g(α, a, β, b) * π^1.5 / 4η^2 * (η * r[i] * r[j] * s3(t) + (δᵢⱼ + 2α * (a[j] - b[j]) * r[i] - 2β * (a[i] - b[i]) * r[j]) * s2(t) + (2δᵢⱼ - 4α * β * (a[i] - b[i]) * (a[j] - b[j]) / η) * s1(t))
-    end
-    res
+        -g(α, a, β, b) * π^1.5 / 4η^2 * (η * r[i] * r[j] * s3(t) + (δᵢⱼ + 2α * (a[j] - b[j]) * r[i] - 2β * (a[i] - b[i]) * r[j]) * s2(t) + (2δᵢⱼ - 4α * β * (a[i] - b[i]) * (a[j] - b[j]) / η) * s1(t))
+    end)
 end
 nuclear_potential_matrix(orbitals, indices, mol) = one_electron_matrix(orbitals, indices, mol, (nuclear_ss, nuclear_ps, nuclear_pp))
 
