@@ -53,7 +53,7 @@ end
 g(α, a, β, b) = exp(-α * β / (α + β) * norm(a - b)^2)
 s1(t) = abs(t) < 1e-15 ? 2. / sqrt(π) : erf(t)/t
 s2(t) = abs(t) < 1e-5  ? -4. / (3sqrt(π)) : (2π^-.5 * t * exp(-t^2) - erf(t)) / t^3
-s3(t) = abs(t) < 1e-3  ? 8 / (5sqrt(π)) : (3erf(t) - 2 * π^(-.5) * (3t + 2t^3) * exp(-t^2)) / t^5
+s3(t) = abs(t) < 1e-3  ? 8 / (5sqrt(π)) : (3erf(t) - 2 * (3t + 2t^3) * exp(-t*t)) / (sqrt(π) * t*t*t*t*t)
 
 overlap_ss(α, a, _, β, b, _, _) = (π / (α + β))^1.5 * g(α, a, β, b)
 overlap_ps(α, a, i, β, b, _, _) = -g(α, a, β, b) * β * π^1.5 / (α + β)^2.5 * (a[i] - b[i])
