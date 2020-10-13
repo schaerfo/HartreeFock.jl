@@ -29,20 +29,19 @@ function one_electron_matrix(orbitals, indices, mol, integral_functions)
         orbital_a = orbitals[i]
         orbital_b = orbitals[j]
 
-        func = if is_s_orbital(orbital_a.type) && is_s_orbital(orbital_b.type)
-            integral_functions[1]
-        elseif is_s_orbital(orbital_a.type) || is_s_orbital(orbital_b.type)
-            if is_s_orbital(orbital_a.type)
-                orbital_a, orbital_b = orbital_b, orbital_a
-            end
-            integral_functions[2]
-        else
-            integral_functions[3]
-        end
-
         for (α, a) in orbital_a.primitives
             for (β, b) in orbital_b.primitives
-                curr_integral::Float64 = func(α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
+
+                curr_integral = if is_s_orbital(orbital_a.type) && is_s_orbital(orbital_b.type)
+                    integral_functions[1](α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
+                elseif is_s_orbital(orbital_a.type) || is_s_orbital(orbital_b.type)
+                    if is_s_orbital(orbital_a.type)
+                        orbital_a, orbital_b = orbital_b, orbital_a
+                    end
+                    integral_functions[2](α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
+                else
+                    integral_functions[3](α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
+                end
                 res[i, j] += a * b * curr_integral
             end
         end
