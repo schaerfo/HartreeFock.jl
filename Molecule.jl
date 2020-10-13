@@ -52,7 +52,7 @@ function Base.show(io::IO, m::Molecule)
     println(io, "Molecule information")
     println(io, "Number of electrons: ", Int(m.electron_count))
     for a in m.atoms
-        println(io, "Atom", " ", a.symbol, " ", a.x, " ", a.y, " ", a.z, ", nuclear charge: ", Int(a.charge))
+        println(io, "Atom", " ", a.symbol, " ", a.pos[1], " ", a.pos[2], " ", a.pos[3], ", nuclear charge: ", Int(a.charge))
     end
 end
 
@@ -78,7 +78,7 @@ function get_basisfunctions(shells)
                     push!(res, Integrals.Orbital([0, 0, 0], primitives, curr_type))
                 end
             else
-                throw(ErrorException("Unknown angular quantum number: $curr_l"))
+                error("Unknown angular quantum number: $curr_l")
             end
         end
     end
