@@ -12,11 +12,11 @@ struct Orbital
     type::OrbitalType
 end
 
-is_s_orbital(t::OrbitalType) = t == s
-function is_p_orbital(t::OrbitalType)
+is_s_orbital(o::Orbital) = o.type == s
+function is_p_orbital(o::Orbital)
     compare_type = Base.Enums.basetype(OrbitalType)
     bitmask = compare_type(0b11)
-    t = compare_type(t)
+    t = compare_type(o.type)
     (~bitmask & t) == 0 && (bitmask & t) != 0
 end
 
@@ -39,13 +39,13 @@ function one_electron_matrix(orbitals, indices, mol, integral_functions)
         orbital_a = orbitals[i]
         orbital_b = orbitals[j]
 
-        if is_s_orbital(orbital_a.type) && is_p_orbital(orbital_b.type)
+        if is_s_orbital(orbital_a) && is_p_orbital(orbital_b)
             orbital_a, orbital_b = orbital_b, orbital_a
         end
 
-        res[j, i] = res[i, j] = if is_s_orbital(orbital_a.type)
+        res[j, i] = res[i, j] = if is_s_orbital(orbital_a)
                                     add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[1])
-                                elseif is_s_orbital(orbital_b.type)
+                                elseif is_s_orbital(orbital_b)
                                     add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[2])
                                 else
                                     add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[3])
