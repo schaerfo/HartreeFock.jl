@@ -68,7 +68,7 @@ kinetic_energy_matrix(orbitals, indices, mol) = one_electron_matrix(orbitals, in
 function nuclear_loop(mol, func)
     res = 0.
     for curr_atom in mol.atoms
-        res -= curr_atom.charge * func(curr_atom.pos)
+        res += curr_atom.charge * func(curr_atom.pos)
     end
     res
 end
