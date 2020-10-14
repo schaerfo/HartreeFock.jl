@@ -22,6 +22,16 @@ end
 
 one_electron_indices(n) = [(i, j) for i in 1:n for j in i:n]
 
+function add_one_electron_integrals(orbital_a, orbital_b, mol, integral_func)
+    res = 0.
+    for (α, a) in orbital_a.primitives
+        for (β, b) in orbital_b.primitives
+            res += a * b * integral_func(α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
+        end
+    end
+    res
+end
+
 function one_electron_matrix(orbitals, indices, mol, integral_functions)
     @assert length(indices) == length(orbitals) * (length(orbitals) + 1) / 2
     res = zeros(Float64, (length(orbitals), length(orbitals)))
@@ -29,23 +39,16 @@ function one_electron_matrix(orbitals, indices, mol, integral_functions)
         orbital_a = orbitals[i]
         orbital_b = orbitals[j]
 
-        for (α, a) in orbital_a.primitives
-            for (β, b) in orbital_b.primitives
-
-                curr_integral = if is_s_orbital(orbital_a.type) && is_s_orbital(orbital_b.type)
-                    integral_functions[1](α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
-                elseif is_s_orbital(orbital_a.type) || is_s_orbital(orbital_b.type)
-                    if is_s_orbital(orbital_a.type)
-                        orbital_a, orbital_b = orbital_b, orbital_a
-                    end
-                    integral_functions[2](α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
-                else
-                    integral_functions[3](α, orbital_a.center, Int(orbital_a.type), β, orbital_b.center, Int(orbital_b.type), mol)
-                end
-                res[i, j] += a * b * curr_integral
-            end
-        end
-        res[j, i] = res[i, j]
+        res[j, i] = res[i, j] = if is_s_orbital(orbital_a.type) && is_s_orbital(orbital_b.type)
+                                    add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[1])
+                                elseif is_s_orbital(orbital_a.type) || is_s_orbital(orbital_b.type)
+                                    if is_s_orbital(orbital_a.type)
+                                        orbital_a, orbital_b = orbital_b, orbital_a
+                                    end
+                                    add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[2])
+                                else
+                                    add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[3])
+                                end
     end
     res
 end
