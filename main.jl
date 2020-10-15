@@ -5,7 +5,6 @@ include("Molecule.jl")
 function main(inputfile, basisset_file)
     m = MoleculeUtils.read_xyz_file(inputfile)
     b = MoleculeUtils.construct_basisset(m, basisset_file)
-    display(b)
     println("Number of orbitals: ", length(b))
     indices = MoleculeUtils.Integrals.one_electron_indices(length(b))
     @time s = MoleculeUtils.Integrals.overlap_matrix(b, indices, m)
@@ -14,6 +13,9 @@ function main(inputfile, basisset_file)
     display(s)
     display(t)
     display(v)
+    @time two_el_indices = MoleculeUtils.Integrals.two_electron_indices(length(b))
+    @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b, two_el_indices, m)
+    display(coulomb_integrals)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
