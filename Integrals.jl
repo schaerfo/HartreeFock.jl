@@ -43,13 +43,16 @@ function one_electron_matrix(orbitals, indices, mol, integral_functions)
             orbital_a, orbital_b = orbital_b, orbital_a
         end
 
-        res[j, i] = res[i, j] = if is_s_orbital(orbital_a)
-                                    add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[1])
-                                elseif is_s_orbital(orbital_b)
-                                    add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[2])
-                                else
-                                    add_one_electron_integrals(orbital_a, orbital_b, mol, integral_functions[3])
-                                end
+        func = if is_s_orbital(orbital_a)
+                   integral_functions[1]
+               elseif is_s_orbital(orbital_b)
+                   integral_functions[2]
+               else
+                   integral_functions[3]
+               end
+
+        res[j, i] = res[i, j] = add_one_electron_integrals(orbital_a, orbital_b, mol, func)
+
     end
     res
 end
