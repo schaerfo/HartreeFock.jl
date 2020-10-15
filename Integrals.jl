@@ -62,7 +62,7 @@ s1(t) = abs(t) < 1e-15 ? 2. / sqrt(π) : erf(t)/t
 s2(t) = abs(t) < 1e-5  ? -4. / (3sqrt(π)) : (2π^-.5 * t * exp(-t^2) - erf(t)) / t^3
 s3(t) = abs(t) < 1e-3  ? 8 / (5sqrt(π)) : (3erf(t) - 2π^-.5 * (3t + 2t^3) * exp(-t*t)) / (t*t*t*t*t)
 s4(t) = abs(t) < 1e-15^(1/7) ? -16 / 7sqrt(π) : (2π^-.5 * (15t + 10t^3 + 4t^5) * exp(-t^2) - 15erf(t)) / t^7
-s5(t) = abs(t) < 1e-15^(1/9) ? 32 / 9sqrt(π) : (105erf(t) - 2π^-.5 * (105t + 70t^3 + 28t^5 + 7t^7) * exp(-t^2)) / t^9
+s5(t) = abs(t) < 1e-15^(1/9) ? 32 / 9sqrt(π) : (105erf(t) - 2π^-.5 * (105t + 70t^3 + 28t^5 + 8t^7) * exp(-t^2)) / t^9
 
 overlap_ss(α, a, _, β, b, _, _) = (π / (α + β))^1.5 * g(α, a, β, b)
 overlap_ps(α, a, i, β, b, _, _) = -g(α, a, β, b) * β * π^1.5 / (α + β)^2.5 * (a[i] - b[i])
@@ -156,7 +156,7 @@ function coulomb_ppss(α, a, i, β, b, j, γ, c, _, δ, d, _)
     δᵢⱼ = i == j
     δabᵢ = a[i] - b[i]
     δabⱼ = a[j] - b[j]
-    g(α, a, β, b) * g(γ, c, δ, d) * q * π^3 / (4η^3.5 * θ^1.5) * (q^4 * r[i] * r[j] * s3(t) + q^2 * (δᵢⱼ + 2α * δabⱼ * r[i] - 2β * δabᵢ) * s2(t) + (2η * δᵢⱼ - 4α * β * δabᵢ * δabⱼ) * s1(t))
+    g(α, a, β, b) * g(γ, c, δ, d) * q * π^3 / (4η^3.5 * θ^1.5) * (q^4 * r[i] * r[j] * s3(t) + q^2 * (δᵢⱼ + 2α * δabⱼ * r[i] - 2β * δabᵢ * r[j]) * s2(t) + (2η * δᵢⱼ - 4α * β * δabᵢ * δabⱼ) * s1(t))
 end
 
 function coulomb_psps(α, a, i, β, b, _, γ, c, k, δ, d, _)
@@ -209,9 +209,9 @@ function coulomb_pppp(α, a, i, β, b, j, γ, c, k, δ, d, l)
     u4 = -r[i] * r[j] * r[k]
     v1 = 4η * θ * δᵢⱼ * δₖₗ
     v2 = 2 * ((η + θ) * δᵢⱼ * δₖₗ - 2β * θ * δabᵢ * r[j] * δₖₗ - 2β * δ * δabᵢ * δcdₖ * δⱼₗ)
-    v3 = 2θ * r[i] * r[j] * δₖₗ * 2δ * δcdₖ * (r[i] * δⱼₗ + r[j] * δᵢₗ) - 2β * δabᵢ * (r[k] * δⱼₗ + r[j] * δₖₗ) + δᵢⱼ * δₖₗ + δᵢₗ * δⱼₖ + (i == k) * δⱼₗ
+    v3 = 2θ * r[i] * r[j] * δₖₗ + 2δ * δcdₖ * (r[i] * δⱼₗ + r[j] * δᵢₗ) - 2β * δabᵢ * (r[k] * δⱼₗ + r[j] * δₖₗ) + δᵢⱼ * δₖₗ + δᵢₗ * δⱼₖ + (i == k) * δⱼₗ
     v4 = r[i] * r[k] * δⱼₗ + r[i] * r[j] * δₖₗ + r[j] * r[k] * δᵢₗ
-    α / η * δabⱼ * coulomb_ppps(α, a, i, β, b, j, γ, c, k, δ, d, l) + g(α, a, β, b) * g(γ, c, δ, d) * q * π^3 / (16η^3.5 * θ^3.5) *
+    α / η * δabⱼ * coulomb_ppps(γ, c, k, δ, d, l, α, a, i, β, b, j) + g(α, a, β, b) * g(γ, c, δ, d) * q * π^3 / (16η^3.5 * θ^3.5) *
         (-q^8 * u4 * r[l] * s5(t) +
          q^6 * (v4 + 2γ * δcdₗ * u4 - u3 * r[l]) * s4(t) +
          q^4 * (v3 + 2γ * δcdₗ * u3 - u2 * r[l]) * s3(t) +
@@ -236,6 +236,43 @@ function add_two_electron_integrals(r, s, t, u, func)
     res
 end
 
+function dispatch_two_electron_integral(r, s, t, u, ssss, psss, psps, ppss, ppps, pppp)
+    if is_p_orbital(u)
+        @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_p_orbital(u)
+        return coulomb_pppp
+    elseif is_p_orbital(t) && is_p_orbital(s)
+        @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
+        return coulomb_ppps
+    elseif is_p_orbital(s)
+        @assert is_p_orbital(r) && is_p_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+        return coulomb_ppss
+    elseif is_p_orbital(t)
+        @assert is_p_orbital(r) && is_s_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
+        return coulomb_psps
+    elseif is_p_orbital(r)
+        @assert is_p_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+        return coulomb_psss
+    else
+        @assert is_s_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+        return coulomb_ssss
+    end
+end
+
+function order_orbital_tuple(r, s, t, u)
+    if is_s_orbital(r) && is_p_orbital(s)
+        r, s = s, r
+    end
+    if is_s_orbital(t) && is_p_orbital(u)
+        t, u = u, t
+    end
+
+    if (is_s_orbital(s) && is_p_orbital(t) && is_p_orbital(u)) ||
+       (is_s_orbital(r) && is_s_orbital(s) && is_p_orbital(t))
+       r, s, t, u = t, u, r, s
+   end
+   return r, s, t, u
+end
+
 function two_electron_integrals(orbitals, indices, mol)
     n = length(orbitals)
     @assert length(indices) == (n^4 + 2n^3 + 3n^2 + 2n) / 8
@@ -247,39 +284,8 @@ function two_electron_integrals(orbitals, indices, mol)
         t = orbitals[λ]
         u = orbitals[σ]
 
-        if is_s_orbital(r) && is_p_orbital(s)
-            r, s = s, r
-        end
-        if is_s_orbital(t) && is_p_orbital(u)
-            t, u = u, t
-        end
-
-        if (is_s_orbital(s) && is_p_orbital(t) && is_p_orbital(u)) ||
-           (is_s_orbital(r) && is_s_orbital(s) && is_p_orbital(t))
-           r, s, t, u = t, u, r, s
-       end
-
-       func = if is_p_orbital(u)
-                  @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_p_orbital(u)
-                  coulomb_pppp
-              elseif is_p_orbital(t) && is_p_orbital(s)
-                  @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
-                  coulomb_ppps
-              elseif is_p_orbital(s)
-                  @assert is_p_orbital(r) && is_p_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-                  coulomb_ppss
-              elseif is_p_orbital(t)
-                  @assert is_p_orbital(r) && is_s_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
-                  coulomb_psps
-              elseif is_p_orbital(r)
-                  @assert is_p_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-                  coulomb_psss
-              else
-                  @assert is_s_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-                  coulomb_ssss
-              end
-
-       res[i] = add_two_electron_integrals(r, s, t, u, func)
+        r, s, t, u = order_orbital_tuple(r, s, t, u)
+        res[i] = add_two_electron_integrals(r, s, t, u, dispatch_two_electron_integral(r, s, t, u, coulomb_ssss, coulomb_psss, coulomb_psps, coulomb_ppss, coulomb_ppps, coulomb_pppp))
     end
     res
 end
