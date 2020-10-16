@@ -1,6 +1,7 @@
 #!/usr/bin/julia
 
 include("Molecule.jl")
+include("FockMatrix.jl")
 
 function main(inputfile, basisset_file)
     m = MoleculeUtils.read_xyz_file(inputfile)
@@ -15,7 +16,12 @@ function main(inputfile, basisset_file)
     display(v)
     @time two_el_indices = MoleculeUtils.Integrals.two_electron_indices(length(b))
     @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b, two_el_indices, m)
-    display(coulomb_integrals)
+
+    c = FockMatrix.initial_coefficients(s)
+    p = similar(c)
+    FockMatrix.update_density!(p, c, Int(m.electron_count / 2))
+    f = t + v + FockMatrix.electron_repulsion_matrix(two_el_indices, coulomb_integrals, p)
+    display(f)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
