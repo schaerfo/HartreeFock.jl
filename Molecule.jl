@@ -1,6 +1,7 @@
 module MoleculeUtils
 
 import JSON
+using LinearAlgebra: norm, diag
 using StaticArrays
 
 include("Integrals.jl")
@@ -46,6 +47,12 @@ function read_xyz_file(filename)
     content = readlines(filename)
     atom_vec = [get_atom(l) for l in content[3:end]]
     Molecule(atom_vec, sum(a.charge for a in atom_vec))
+end
+
+coulomb_energy(m::Molecule) = sum(a.charge * b.charge/norm(a.pos - b.pos) for (i, a) in enumerate(m.atoms) for b in m.atoms[i+1:end])
+function electronic_energy(h_mo, f_mo, m::Molecule)
+    occ_orbitals = 1:Int(m.electron_count/2)
+    sum(h + f for (h, f) in zip(diag(h_mo)[occ_orbitals], diag(f_mo)[occ_orbitals]))
 end
 
 function Base.show(io::IO, m::Molecule)
