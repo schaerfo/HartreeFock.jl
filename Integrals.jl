@@ -61,10 +61,10 @@ exp(x::Float64) = ccall("exp", Float64, (Float64,), x)
 
 g(α, a, β, b) = exp(-α * β / (α + β) * norm(a - b)^2)
 s1(t) = abs(t) < 1e-15 ? 2. / sqrt(π) : erf(t)/t
-s2(t) = abs(t) < 1e-5  ? -4. / (3sqrt(π)) : (2π^-.5 * t * exp(-t^2) - erf(t)) / t^3
-s3(t) = abs(t) < 1e-3  ? 8 / (5sqrt(π)) : (3erf(t) - 2π^-.5 * (3t + 2t^3) * exp(-t*t)) / (t*t*t*t*t)
-s4(t) = abs(t) < 1e-15^(1/7) ? -16 / 7sqrt(π) : (2π^-.5 * (15t + 10t^3 + 4t^5) * exp(-t^2) - 15erf(t)) / t^7
-s5(t) = abs(t) < 1e-15^(1/9) ? 32 / 9sqrt(π) : (105erf(t) - 2π^-.5 * (105t + 70t^3 + 28t^5 + 8t^7) * exp(-t^2)) / t^9
+s2(t) = abs(t) < 1e-5  ? -4. / (3sqrt(π)) : (2π^-.5 * t * exp(-t*t) - erf(t)) / t^3
+s3(t) = abs(t) < 1e-3  ? 8 / (5sqrt(π)) : (3erf(t) - 2π^-.5 * (3t + 2t*t*t) * exp(-t*t)) / (t*t*t*t*t)
+s4(t) = abs(t) < 1e-15^(1/7) ? -16 / 7sqrt(π) : (2π^-.5 * (15t + 10t*t*t + 4t*t*t*t*t) * exp(-t*t) - 15erf(t)) / t^7
+s5(t) = abs(t) < 1e-15^(1/9) ? 32 / 9sqrt(π) : (105erf(t) - 2π^-.5 * (105t + 70t*t*t + 28t*t*t*t*t + 8t*t*t*t*t*t*t) * exp(-t*t)) / t^9
 
 overlap_ss(α, a, _, β, b, _, _) = (π / (α + β))^1.5 * g(α, a, β, b)
 overlap_ps(α, a, i, β, b, _, _) = -g(α, a, β, b) * β * π^1.5 / (α + β)^2.5 * (a[i] - b[i])
