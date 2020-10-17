@@ -2,7 +2,6 @@ module Integrals
 
 using LinearAlgebra: norm
 using StaticArrays
-using SpecialFunctions: erf
 
 @enum OrbitalType s=0b0 px=0b01 py=0b10 pz=0b11 #dx²=0b101 dxy=0b110 dxz=0b111 dy²=0b1010 dyz=0b1011 dz²=0b1111
 
@@ -56,6 +55,9 @@ function one_electron_matrix(orbitals, indices, mol, integral_functions)
     end
     res
 end
+
+erf(x::Float64) = ccall("erf", Float64, (Float64,), x)
+exp(x::Float64) = ccall("exp", Float64, (Float64,), x)
 
 g(α, a, β, b) = exp(-α * β / (α + β) * norm(a - b)^2)
 s1(t) = abs(t) < 1e-15 ? 2. / sqrt(π) : erf(t)/t
