@@ -75,7 +75,24 @@ function electron_repulsion_matrix(indices, integrals, density)
     res
 end
 
-function update_density!(p, c, n_occ::Integer)
+struct DensityMatrix
+    curr_density::Array{Float64}
+    prev_density::Array{Float64}
+end
+
+DensityMatrix(n) = DensityMatrix(zeros(n, n), zeros(n, n))
+
+mutable struct DampingDensityMatrix
+    curr_density::Array{Float64}
+    prev_density::Array{Float64}
+    n::Int
+    α::Float64
+    i::Int
+end
+
+DampingDensityMatrix(n, n_damp, α) = DampingDensityMatrix(zeros(n, n), zeros(n, n), n_damp, α, 0)
+
+function update_density!(p::AbstractArray, c, n_occ::Integer)
     @assert size(p) == size(c)
     for μ = 1:size(p, 1)
         for ν = 1:size(p, 2)
@@ -87,6 +104,25 @@ function update_density!(p, c, n_occ::Integer)
         end
     end
 end
+
+function update_density!(p::DensityMatrix, c, n_occ::Integer)
+    p.prev_density .= p.curr_density
+    update_density!(p.curr_density, c, n_occ)
+end
+
+function update_density!(p::DampingDensityMatrix, c, n_occ::Integer)
+    p.prev_density .= p.curr_density
+    update_density!(p.curr_density, c, n_occ)
+    if p.i < p.n
+        @. p.curr_density = (1 - p.α) * p.curr_density + p.α * p.prev_density
+        p.i += 1
+    end
+end
+
+density_difference_norm(p::Union{DensityMatrix, DampingDensityMatrix}) = norm(p.prev_density - p.curr_density)
+
+get_density_matrix(n, _::Nothing, _::Nothing) = DensityMatrix(n)
+get_density_matrix(n, n_damp::Int, α::Float64) = DampingDensityMatrix(n, n_damp, α)
 
 function initial_coefficients(overlap)
     res = similar(overlap)
