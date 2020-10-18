@@ -34,7 +34,7 @@ end
 function one_electron_matrix(orbitals, indices, mol, integral_functions)
     @assert length(indices) == length(orbitals) * (length(orbitals) + 1) / 2
     res = zeros(Float64, (length(orbitals), length(orbitals)))
-    for (i, j) in indices
+    Threads.@threads for (i, j) in indices
         orbital_a = orbitals[i]
         orbital_b = orbitals[j]
 
@@ -279,7 +279,7 @@ function two_electron_integrals(orbitals, indices, mol)
     n = length(orbitals)
     @assert length(indices) == (n^4 + 2n^3 + 3n^2 + 2n) / 8
     res = zeros(Float64, length(indices))
-    for i = 1:length(indices)
+    Threads.@threads for i = 1:length(indices)
         μ, ν, λ, σ = indices[i]
         r = orbitals[μ]
         s = orbitals[ν]
