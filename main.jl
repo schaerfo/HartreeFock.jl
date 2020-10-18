@@ -13,11 +13,11 @@ function main(inputfile, basisset_file, n_damp = nothing, α = nothing)
     b = MoleculeUtils.construct_basisset(m, basisset_file)
     println("Number of orbitals: ", length(b))
     indices = MoleculeUtils.Integrals.one_electron_indices(length(b))
-    s = MoleculeUtils.Integrals.overlap_matrix(b, indices, m)
-    t = MoleculeUtils.Integrals.kinetic_energy_matrix(b, indices, m)
-    v = MoleculeUtils.Integrals.nuclear_potential_matrix(b, indices, m)
+    @time s = MoleculeUtils.Integrals.overlap_matrix(b, indices, m)
+    @time t = MoleculeUtils.Integrals.kinetic_energy_matrix(b, indices, m)
+    @time v = MoleculeUtils.Integrals.nuclear_potential_matrix(b, indices, m)
     two_el_indices = MoleculeUtils.Integrals.two_electron_indices(length(b))
-    coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b, two_el_indices, m)
+    @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b, two_el_indices, m)
 
     c = FockMatrix.initial_coefficients(s)
     p = FockMatrix.get_density_matrix(length(b), n_damp, α)
@@ -28,7 +28,7 @@ function main(inputfile, basisset_file, n_damp = nothing, α = nothing)
     old_energy = MoleculeUtils.electronic_energy(FockMatrix.transform_matrix(c, h), f_mo, m)
 
     step_count = 0
-    while true
+    @time while true
         step_count += 1
         FockMatrix.update_density!(p, c, Int(m.electron_count / 2))
         f .= t .+ v .+ FockMatrix.electron_repulsion_matrix(two_el_indices, coulomb_integrals, p.curr_density)
