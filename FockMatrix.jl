@@ -90,15 +90,15 @@ function electron_repulsion_matrix(indices, integrals, density)
 end
 
 struct DensityMatrix
-    curr_density::Array{Float64}
-    prev_density::Array{Float64}
+    curr_density::Matrix{Float64}
+    prev_density::Matrix{Float64}
 end
 
 DensityMatrix(n) = DensityMatrix(zeros(n, n), zeros(n, n))
 
 mutable struct DampingDensityMatrix
-    curr_density::Array{Float64}
-    prev_density::Array{Float64}
+    curr_density::Matrix{Float64}
+    prev_density::Matrix{Float64}
     n::Int
     α::Float64
     i::Int
