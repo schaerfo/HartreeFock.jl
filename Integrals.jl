@@ -238,28 +238,6 @@ function add_two_electron_integrals(r, s, t, u, func)
     res
 end
 
-function dispatch_two_electron_integral(r, s, t, u, ssss, psss, psps, ppss, ppps, pppp)
-    if is_p_orbital(u)
-        @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_p_orbital(u)
-        return coulomb_pppp
-    elseif is_p_orbital(t) && is_p_orbital(s)
-        @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
-        return coulomb_ppps
-    elseif is_p_orbital(s)
-        @assert is_p_orbital(r) && is_p_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-        return coulomb_ppss
-    elseif is_p_orbital(t)
-        @assert is_p_orbital(r) && is_s_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
-        return coulomb_psps
-    elseif is_p_orbital(r)
-        @assert is_p_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-        return coulomb_psss
-    else
-        @assert is_s_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-        return coulomb_ssss
-    end
-end
-
 function order_orbital_tuple(r, s, t, u)
     if is_s_orbital(r) && is_p_orbital(s)
         r, s = s, r
@@ -287,7 +265,26 @@ function two_electron_integrals(orbitals, indices, mol)
         u = orbitals[σ]
 
         r, s, t, u = order_orbital_tuple(r, s, t, u)
-        res[i] = add_two_electron_integrals(r, s, t, u, dispatch_two_electron_integral(r, s, t, u, coulomb_ssss, coulomb_psss, coulomb_psps, coulomb_ppss, coulomb_ppps, coulomb_pppp))
+
+        res[i] = if is_p_orbital(u)
+            @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_p_orbital(u)
+            add_two_electron_integrals(r, s, t, u, coulomb_pppp)
+        elseif is_p_orbital(t) && is_p_orbital(s)
+            @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
+            add_two_electron_integrals(r, s, t, u, coulomb_ppps)
+        elseif is_p_orbital(s)
+            @assert is_p_orbital(r) && is_p_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+            add_two_electron_integrals(r, s, t, u, coulomb_ppss)
+        elseif is_p_orbital(t)
+            @assert is_p_orbital(r) && is_s_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
+            add_two_electron_integrals(r, s, t, u, coulomb_psps)
+        elseif is_p_orbital(r)
+            @assert is_p_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+            add_two_electron_integrals(r, s, t, u, coulomb_psss)
+        else
+            @assert is_s_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+            add_two_electron_integrals(r, s, t, u, coulomb_ssss)
+        end
     end
     res
 end
