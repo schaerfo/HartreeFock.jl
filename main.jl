@@ -4,6 +4,7 @@ include("Molecule.jl")
 include("FockMatrix.jl")
 
 using LinearAlgebra: norm
+using Random: shuffle!
 
 const ϵₑ = 1e-9
 const ϵₚ = 1e-5
@@ -17,6 +18,7 @@ function main(inputfile, basisset_file, n_damp = nothing, α = nothing)
     @time t = MoleculeUtils.Integrals.kinetic_energy_matrix(b, indices, m)
     @time v = MoleculeUtils.Integrals.nuclear_potential_matrix(b, indices, m)
     two_el_indices = MoleculeUtils.Integrals.two_electron_indices(length(b))
+    shuffle!(two_el_indices)
     @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b, two_el_indices, m)
 
     c = FockMatrix.initial_coefficients(s)
