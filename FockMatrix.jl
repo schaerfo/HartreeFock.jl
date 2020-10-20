@@ -79,7 +79,7 @@ function electron_repulsion_matrix(indices, integrals, density)
         push!(results, Threads.@spawn @views electron_repulsion_matrix_impl(indices[range_start:range_end], integrals[range_start:range_end], density))
     end
 
-    res = sum(map(fetch, results))
+    res::typeof(density) = sum(map(fetch, results))
 
     for i = 1:size(density, 1)
         for j = 1:i
