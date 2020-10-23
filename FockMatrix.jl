@@ -29,9 +29,7 @@ function get_b(i, j, k, l)
     end
 end
 
-function electron_repulsion_matrix_impl(indices, integrals, density)
-    res = similar(density)
-    res .= 0
+function electron_repulsion_matrix_impl!(res, indices, integrals, density)
     for i = 1:length(indices)
         μ, ν, λ, σ = indices[i]
         curr_integral = integrals[i]
@@ -72,14 +70,20 @@ end
 function electron_repulsion_matrix(indices, integrals, density)
     n_threads = Threads.nthreads()
     n = length(integrals)
-    results = Vector{Task}()
+    tasks = Vector{Task}()
+    results = zeros(eltype(density), size(density)..., n_threads)
     for i = 1:n_threads
         range_start = round(typeof(n), (i-1) * Float64(n) / n_threads, RoundToZero) + 1
         range_end = round(typeof(n), i * Float64(n) / n_threads, RoundToZero)
-        push!(results, Threads.@spawn @views electron_repulsion_matrix_impl(indices[range_start:range_end], integrals[range_start:range_end], density))
+        push!(tasks, Threads.@spawn @views electron_repulsion_matrix_impl!(results[:, :, i], indices[range_start:range_end], integrals[range_start:range_end], density))
     end
 
-    res::typeof(density) = sum(map(fetch, results))
+    for t in tasks wait(t) end
+
+    res = zero(density)
+    for i = 1:n_threads
+        res .+= results[:, :, i]
+    end
 
     for i = 1:size(density, 1)
         for j = 1:i
