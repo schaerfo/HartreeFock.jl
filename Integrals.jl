@@ -253,11 +253,9 @@ function order_orbital_tuple(r, s, t, u)
    return r, s, t, u
 end
 
-function two_electron_integrals(orbitals, indices)
-    n = length(orbitals)
-    @assert length(indices) == (n^4 + 2n^3 + 3n^2 + 2n) / 8
-    res = zeros(Float64, length(indices))
-    Threads.@threads for i = 1:length(indices)
+function two_electron_integrals!(res, orbitals, indices)
+    @assert length(res) == length(indices)
+    for i = 1:length(indices)
         μ, ν, λ, σ = indices[i]
         r = orbitals[μ]
         s = orbitals[ν]
@@ -286,6 +284,28 @@ function two_electron_integrals(orbitals, indices)
             add_two_electron_integrals(r, s, t, u, coulomb_ssss)
         end
     end
+end
+
+const integral_batch_size = 0x1000
+
+function two_electron_integrals_impl!(res, orbitals, indices, index_counter::Threads.Atomic{T}) where T <: Integer
+    while true
+        curr_index_start = Threads.atomic_add!(index_counter, convert(T, 1)) * integral_batch_size
+        if curr_index_start >= length(indices) break end
+        curr_range = curr_index_start+1:min(curr_index_start + integral_batch_size, length(indices))
+        @views two_electron_integrals!(res[curr_range], orbitals, indices[curr_range])
+    end
+end
+
+function two_electron_integrals(orbitals, indices)
+    n = length(orbitals)
+    @assert length(indices) == (n^4 + 2n^3 + 3n^2 + 2n) / 8
+    res = zeros(Float64, length(indices))
+    n_threads = min(Threads.nthreads()+1, round(Int, length(indices)/integral_batch_size, RoundUp))
+    curr_index = Threads.Atomic{UInt64}(0)
+    tasks = Vector{Task}()
+    for i = 1:n_threads push!(tasks, Threads.@spawn two_electron_integrals_impl!(res, orbitals, indices, curr_index)) end
+    map(wait, tasks)
     res
 end
 

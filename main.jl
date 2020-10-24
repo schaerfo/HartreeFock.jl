@@ -18,7 +18,6 @@ function main(inputfile, basisset_file, n_damp = nothing, α = nothing)
     @time t = MoleculeUtils.Integrals.kinetic_energy_matrix(b, indices, m)
     @time v = MoleculeUtils.Integrals.nuclear_potential_matrix(b, indices, m)
     two_el_indices = MoleculeUtils.Integrals.two_electron_indices(length(b))
-    shuffle!(two_el_indices)
     @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b, two_el_indices)
 
     c = FockMatrix.initial_coefficients(s)
