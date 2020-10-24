@@ -253,7 +253,7 @@ function order_orbital_tuple(r, s, t, u)
    return r, s, t, u
 end
 
-function two_electron_integrals(orbitals, indices, mol)
+function two_electron_integrals(orbitals, indices)
     n = length(orbitals)
     @assert length(indices) == (n^4 + 2n^3 + 3n^2 + 2n) / 8
     res = zeros(Float64, length(indices))
