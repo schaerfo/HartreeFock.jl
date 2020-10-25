@@ -113,24 +113,6 @@ function nuclear_pp(α, a, i, β, b, j, mol)
 end
 nuclear_potential_matrix(orbitals, indices, mol) = one_electron_matrix(orbitals, indices, mol, (nuclear_ss, nuclear_ps, nuclear_pp))
 
-function two_electron_indices(n::UInt)
-    res = Vector{Tuple{UInt16, UInt16, UInt16, UInt16}}(undef, (n^4 + 2n^3 + 3n^2 + 2n) >> 3)
-    n = UInt16(n)
-    i = UInt(0)
-    for μ ∈ 0x1:n
-        for ν ∈ 0x1:μ
-            for λ ∈ 0x1:μ
-                for σ ∈ 0x1:(λ == μ ? ν : λ)
-                    res[i += 1] = (μ, ν, λ, σ)
-                end
-            end
-        end
-    end
-    res
-end
-
-two_electron_indices(n) = two_electron_indices(UInt(n))
-
 function coulomb_ssss(α, a, _, β, b, _, γ, c, _, δ, d, _)
     η = α + β
     θ = γ + δ
@@ -253,58 +235,57 @@ function order_orbital_tuple(r, s, t, u)
    return r, s, t, u
 end
 
-function two_electron_integrals!(res, orbitals, indices)
-    @assert length(res) == length(indices)
-    for i = 1:length(indices)
-        μ, ν, λ, σ = indices[i]
-        r = orbitals[μ]
-        s = orbitals[ν]
-        t = orbitals[λ]
-        u = orbitals[σ]
+function two_electron_integrals_impl!(res, orbitals, μ)
+    i = ((μ-1)^4 + 2(μ-1)^3 + 3(μ-1)^2 + 2(μ-1)) >> 3
 
-        r, s, t, u = order_orbital_tuple(r, s, t, u)
+    for ν ∈ 1:μ
+        for λ ∈ 1:μ
+            for σ ∈ 1:(λ == μ ? ν : λ)
+                r = orbitals[μ]
+                s = orbitals[ν]
+                t = orbitals[λ]
+                u = orbitals[σ]
 
-        res[i] = if is_p_orbital(u)
-            @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_p_orbital(u)
-            add_two_electron_integrals(r, s, t, u, coulomb_pppp)
-        elseif is_p_orbital(t) && is_p_orbital(s)
-            @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
-            add_two_electron_integrals(r, s, t, u, coulomb_ppps)
-        elseif is_p_orbital(s)
-            @assert is_p_orbital(r) && is_p_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-            add_two_electron_integrals(r, s, t, u, coulomb_ppss)
-        elseif is_p_orbital(t)
-            @assert is_p_orbital(r) && is_s_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
-            add_two_electron_integrals(r, s, t, u, coulomb_psps)
-        elseif is_p_orbital(r)
-            @assert is_p_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-            add_two_electron_integrals(r, s, t, u, coulomb_psss)
-        else
-            @assert is_s_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
-            add_two_electron_integrals(r, s, t, u, coulomb_ssss)
+                r, s, t, u = order_orbital_tuple(r, s, t, u)
+
+                res[i += 1] = if is_p_orbital(u)
+                    @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_p_orbital(u)
+                    add_two_electron_integrals(r, s, t, u, coulomb_pppp)
+                elseif is_p_orbital(t) && is_p_orbital(s)
+                    @assert is_p_orbital(r) && is_p_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
+                    add_two_electron_integrals(r, s, t, u, coulomb_ppps)
+                elseif is_p_orbital(s)
+                    @assert is_p_orbital(r) && is_p_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+                    add_two_electron_integrals(r, s, t, u, coulomb_ppss)
+                elseif is_p_orbital(t)
+                    @assert is_p_orbital(r) && is_s_orbital(s) && is_p_orbital(t) && is_s_orbital(u)
+                    add_two_electron_integrals(r, s, t, u, coulomb_psps)
+                elseif is_p_orbital(r)
+                    @assert is_p_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+                    add_two_electron_integrals(r, s, t, u, coulomb_psss)
+                else
+                    @assert is_s_orbital(r) && is_s_orbital(s) && is_s_orbital(t) && is_s_orbital(u)
+                    add_two_electron_integrals(r, s, t, u, coulomb_ssss)
+                end
+            end
         end
     end
 end
 
-const integral_batch_size = 0x1000
-
-function two_electron_integrals_impl!(res, orbitals, indices, index_counter::Threads.Atomic{T}) where T <: Integer
+function two_electron_integrals_worker!(res, orbitals, index_counter::Threads.Atomic{T}) where T <: Integer
     while true
-        curr_index_start = Threads.atomic_add!(index_counter, convert(T, 1)) * integral_batch_size
-        if curr_index_start >= length(indices) break end
-        curr_range = curr_index_start+1:min(curr_index_start + integral_batch_size, length(indices))
-        @views two_electron_integrals!(res[curr_range], orbitals, indices[curr_range])
+        curr_index = Threads.atomic_sub!(index_counter, 1)
+        if curr_index < 1 break end
+        two_electron_integrals_impl!(res, orbitals, curr_index)
     end
 end
 
-function two_electron_integrals(orbitals, indices)
-    n = length(orbitals)
-    @assert length(indices) == (n^4 + 2n^3 + 3n^2 + 2n) / 8
-    res = zeros(Float64, length(indices))
-    n_threads = min(Threads.nthreads()+1, round(Int, length(indices)/integral_batch_size, RoundUp))
-    curr_index = Threads.Atomic{UInt64}(0)
+function two_electron_integrals(orbitals)
+    n = Threads.Atomic{Int}(length(orbitals))
+    res = zeros(Float64, (n[]^4 + 2n[]^3 + 3n[]^2 + 2n[]) >> 3)
+    n_threads = min(Threads.nthreads(), n[])
     tasks = Vector{Task}()
-    for i = 1:n_threads push!(tasks, Threads.@spawn two_electron_integrals_impl!(res, orbitals, indices, curr_index)) end
+    for i = 1:n_threads push!(tasks, Threads.@spawn two_electron_integrals_worker!(res, orbitals, n)) end
     map(wait, tasks)
     res
 end

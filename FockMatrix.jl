@@ -29,53 +29,63 @@ function get_b(i, j, k, l)
     end
 end
 
-function electron_repulsion_matrix_impl!(res, indices, integrals, density)
-    for i = 1:length(indices)
-        μ, ν, λ, σ = indices[i]
-        curr_integral = integrals[i]
+function electron_repulsion_matrix_impl!(res, integrals, density, μ)
+    i = ((μ-1)^4 + 2(μ-1)^3 + 3(μ-1)^2 + 2(μ-1)) >> 3
 
-        res[μ, ν] += get_a(μ, ν, λ, σ) * density[λ, σ] * curr_integral # 1
+    for ν ∈ 1:μ
+        for λ ∈ 1:μ
+            for σ ∈ 1:(λ == μ ? ν : λ)
+                curr_integral = integrals[i += 1]
 
-        if λ ≠ ν
-            res[μ, λ] += get_b(μ, ν, λ, σ) * density[ν, σ] * curr_integral # 2
-        end
+                res[μ, ν] += get_a(μ, ν, λ, σ) * density[λ, σ] * curr_integral # 1
 
-        if σ ≠ ν && σ ≠ λ
-            res[μ, σ] += get_b(μ, ν, σ, λ) * density[ν, λ] * curr_integral # 3
-        end
+                if λ ≠ ν
+                    res[μ, λ] += get_b(μ, ν, λ, σ) * density[ν, σ] * curr_integral # 2
+                end
 
-        if ν ≥ λ && ν ≠ μ
-            res[ν, λ] += get_b(ν, μ, λ, σ) * density[μ, σ] * curr_integral # 4
-        end
+                if σ ≠ ν && σ ≠ λ
+                    res[μ, σ] += get_b(μ, ν, σ, λ) * density[ν, λ] * curr_integral # 3
+                end
 
-        if ν < λ && λ ≠ μ
-            res[λ, ν] += get_b(λ, σ, ν, μ) * density[μ, σ] * curr_integral # 5
-        end
+                if ν ≥ λ && ν ≠ μ
+                    res[ν, λ] += get_b(ν, μ, λ, σ) * density[μ, σ] * curr_integral # 4
+                end
 
-        if ν ≥ σ && σ ≠ λ && ν ≠ μ
-            res[ν, σ] += get_b(ν, μ, σ, λ) * density[μ, λ] * curr_integral # 6
-        end
+                if ν < λ && λ ≠ μ
+                    res[λ, ν] += get_b(λ, σ, ν, μ) * density[μ, σ] * curr_integral # 5
+                end
 
-        if ν < σ && σ ≠ λ
-            res[σ, ν] += get_b(σ, λ, ν, μ) * density[μ, λ] * curr_integral # 7
-        end
+                if ν ≥ σ && σ ≠ λ && ν ≠ μ
+                    res[ν, σ] += get_b(ν, μ, σ, λ) * density[μ, λ] * curr_integral # 6
+                end
 
-        if λ ≠ μ && λ ≠ ν && σ ≠ ν
-            res[λ, σ] += get_a(λ, σ, μ, ν) * density[μ, ν] * curr_integral # 8
+                if ν < σ && σ ≠ λ
+                    res[σ, ν] += get_b(σ, λ, ν, μ) * density[μ, λ] * curr_integral # 7
+                end
+
+                if λ ≠ μ && λ ≠ ν && σ ≠ ν
+                    res[λ, σ] += get_a(λ, σ, μ, ν) * density[μ, ν] * curr_integral # 8
+                end
+            end
         end
     end
-    res
 end
 
-function electron_repulsion_matrix(indices, integrals, density)
-    n_threads = Threads.nthreads()
-    n = length(integrals)
+function electron_repulsion_matrix_worker!(res, integrals, density, index_counter::Threads.Atomic{T}) where T <: Integer
+    while true
+        curr_index = Threads.atomic_sub!(index_counter, 1)
+        if curr_index < 1 break end
+        electron_repulsion_matrix_impl!(res, integrals, density, curr_index)
+    end
+end
+
+function electron_repulsion_matrix(integrals, density)
+    n = Threads.Atomic{Int}(size(density, 1))
+    n_threads = min(Threads.nthreads(), n[])
     tasks = Vector{Task}()
     results = zeros(eltype(density), size(density)..., n_threads)
     for i = 1:n_threads
-        range_start = round(typeof(n), (i-1) * Float64(n) / n_threads, RoundToZero) + 1
-        range_end = round(typeof(n), i * Float64(n) / n_threads, RoundToZero)
-        push!(tasks, Threads.@spawn @views electron_repulsion_matrix_impl!(results[:, :, i], indices[range_start:range_end], integrals[range_start:range_end], density))
+        push!(tasks, Threads.@spawn @views electron_repulsion_matrix_worker!(results[:, :, i], integrals, density, n))
     end
 
     for t in tasks wait(t) end

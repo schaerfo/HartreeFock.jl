@@ -17,8 +17,7 @@ function main(inputfile, basisset_file, n_damp = nothing, α = nothing)
     @time s = MoleculeUtils.Integrals.overlap_matrix(b, indices, m)
     @time t = MoleculeUtils.Integrals.kinetic_energy_matrix(b, indices, m)
     @time v = MoleculeUtils.Integrals.nuclear_potential_matrix(b, indices, m)
-    two_el_indices = MoleculeUtils.Integrals.two_electron_indices(length(b))
-    @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b, two_el_indices)
+    @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b)
 
     c = FockMatrix.initial_coefficients(s)
     p = FockMatrix.get_density_matrix(length(b), n_damp, α)
@@ -32,7 +31,7 @@ function main(inputfile, basisset_file, n_damp = nothing, α = nothing)
     @time while true
         step_count += 1
         FockMatrix.update_density!(p, c, Int(m.electron_count / 2))
-        f .= t .+ v .+ FockMatrix.electron_repulsion_matrix(two_el_indices, coulomb_integrals, p.curr_density)
+        f .= t .+ v .+ FockMatrix.electron_repulsion_matrix(coulomb_integrals, p.curr_density)
 
         f_mo = FockMatrix.transform_matrix(c, f)
         energy = MoleculeUtils.electronic_energy(FockMatrix.transform_matrix(c, h), f_mo, m)
