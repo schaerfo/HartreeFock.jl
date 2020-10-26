@@ -59,7 +59,8 @@ end
 erf(x::Float64) = ccall("erf", Float64, (Float64,), x)
 exp(x::Float64) = ccall("exp", Float64, (Float64,), x)
 
-g(α, a, β, b) = exp(-α * β / (α + β) * norm(a - b)^2)
+squared_norm(x::AbstractArray) = sum(i*i for i in x)
+g(α, a, β, b) = exp(-α * β / (α + β) * squared_norm(a - b))
 s1(t) = abs(t) < 1e-15 ? 2. / sqrt(π) : erf(t)/t
 s2(t) = abs(t) < 1e-5  ? -4. / (3sqrt(π)) : (2π^-.5 * t * exp(-t*t) - erf(t)) / t^3
 s3(t) = abs(t) < 1e-3  ? 8 / (5sqrt(π)) : (3erf(t) - 2π^-.5 * (3t + 2t*t*t) * exp(-t*t)) / (t*t*t*t*t)
