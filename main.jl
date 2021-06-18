@@ -14,9 +14,11 @@ function main(inputfile, basisset_file, n_damp = nothing, α = nothing)
     b = MoleculeUtils.construct_basisset(m, basisset_file)
     println("Number of orbitals: ", length(b))
     indices = MoleculeUtils.Integrals.one_electron_indices(length(b))
-    @time s = MoleculeUtils.Integrals.overlap_matrix(b, indices, m)
-    @time t = MoleculeUtils.Integrals.kinetic_energy_matrix(b, indices, m)
-    @time v = MoleculeUtils.Integrals.nuclear_potential_matrix(b, indices, m)
+    @time begin
+        s = MoleculeUtils.Integrals.overlap_matrix(b, indices, m)
+        t = MoleculeUtils.Integrals.kinetic_energy_matrix(b, indices, m)
+        v = MoleculeUtils.Integrals.nuclear_potential_matrix(b, indices, m)
+    end
     @time coulomb_integrals = MoleculeUtils.Integrals.two_electron_integrals(b)
 
     c = FockMatrix.initial_coefficients(s)
